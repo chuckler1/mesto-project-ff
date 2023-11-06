@@ -6,10 +6,9 @@ import './pages/index.css';
 const cardContainer = document.querySelector('.places__list');
 const profileTitle = document.querySelector('.profile__title');
 const profileDescription = document.querySelector('.profile__description');
-
+const popups = document.querySelectorAll('.popup');
 // DOM узлы модального окна редактирования профиля
 const popupEdit = document.querySelector('.popup_type_edit');
-const closeEditButton = popupEdit.querySelector('.popup__close');
 // Кнопка для открытия этого окна
 const buttonEdit = document.querySelector('.profile__edit-button');
 // и его форма
@@ -19,7 +18,6 @@ const jobInput = formElement.elements.description;
 
 // DOM узлы модального окна создания новой карточки
 const popupNewCard = document.querySelector('.popup_type_new-card');
-const closeNewCardButton = popupNewCard.querySelector('.popup__close');
 // Кнопка для открытия этого окна
 const buttonAdd = document.querySelector('.profile__add-button');
 // и его форма
@@ -27,7 +25,9 @@ const formElementCard = popupNewCard.querySelector('.popup__form');
 const placeNameInput = formElementCard.elements['place-name'];
 const linkInput = formElementCard.elements.link;
 // DOM узел модального окна изображения карточки 
-const popupImage = document.querySelector('.popup_type_image');
+const popupOpenImage = document.querySelector('.popup_type_image');
+const popupImage = popupOpenImage.querySelector('.popup__image');
+const popupImageCaption = popupOpenImage.querySelector('.popup__caption');
 
 
 // Функция добавления карточки в разметку
@@ -44,32 +44,22 @@ function handleFormSubmit(evt) {
 // Функция добавления новой карточки с данными из формы
 function handleFormSubmitCard(evt) {
   evt.preventDefault();
-  let obj = {
+  const obj = {
     name: placeNameInput.value,
     link: linkInput.value,
   };
   cardContainer.prepend(createCard(obj, deleteCardItem, likeCard, openImage));
   closeModal(popupNewCard);
-  placeNameInput.value = '';
-  linkInput.value = '';
+  evt.target.reset();
 };
-
 // Функция обработкчика событий для окрытия модального окна изображения карточки 
-// и присваивание значений ссылки и названия, а также установка слушателя для закрытия 
+// и присваивание значений ссылки и названия
 function openImage(evt) {
   if (evt.target.classList.contains('card__image')) {
-    popupImage.querySelector('.popup__image').src = evt.target.src;
-    popupImage.querySelector('.popup__caption').textContent =
+    popupImage.src = evt.target.src;
+    popupImageCaption.textContent =
       evt.target.closest('.card').querySelector('.card__title').textContent;
-    openModal(popupImage);
-    popupImage.addEventListener('click', (evt) => {
-      if (
-        evt.target.classList.contains('popup__close') ||
-        evt.target.classList.contains('popup_is-opened')
-      ) {
-        closeModal(popupImage);
-      }
-    });
+    openModal(popupOpenImage);
   }
 }
 
@@ -83,29 +73,22 @@ buttonEdit.addEventListener('click', () => {
   nameInput.value = profileTitle.textContent;
   jobInput.value = profileDescription.textContent;
 });
-// Добавление слушателя для закрытия модального окна редактирования
-popupEdit.addEventListener('click', (evt) => {
-  if (
-    evt.target === closeEditButton ||
-    evt.target.classList.contains('popup_is-opened')
-  ) {
-    closeModal(popupEdit);
-  }
+// Добавление слушателей для закрытия модальных окон
+popups.forEach((popup) => {
+  popup.addEventListener('mousedown', (evt) => {
+    if (
+      evt.target.classList.contains('popup__close') ||
+      evt.target.classList.contains('popup_is-opened')
+    ) {
+      closeModal(popup);
+    }
+  })
 });
 // Обработкчик события при отправке формы окна редактирования
 formElement.addEventListener('submit', handleFormSubmit);
 // Добавление слушателя на кнопку открытия окна добавления карточки
 buttonAdd.addEventListener('click', () => {
   openModal(popupNewCard);
-});
-// Добавление слушателя для закрытия окна добавления карточки
-popupNewCard.addEventListener('click', (evt) => {
-  if (
-    evt.target === closeNewCardButton ||
-    evt.target.classList.contains('popup_is-opened')
-  ) {
-    closeModal(popupNewCard);
-  }
 });
 // Обработкчик события при отправке формы окна добавления карточки
 formElementCard.addEventListener('submit', handleFormSubmitCard);
