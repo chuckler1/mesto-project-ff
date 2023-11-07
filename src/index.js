@@ -57,7 +57,7 @@ function handleFormSubmitCard(evt) {
 function openImage(evt) {
   if (evt.target.classList.contains('card__image')) {
     popupImage.src = evt.target.src;
-    popupImageCaption.textContent =
+    popupImageCaption.textContent = popupImage.alt =
       evt.target.closest('.card').querySelector('.card__title').textContent;
     openModal(popupOpenImage);
   }
