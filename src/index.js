@@ -1,7 +1,13 @@
 import { createCard, deleteCardItem, likeCard } from './components/card.js';
-import { openModal, closeModal } from './components/modal.js';
+import { openModal, closeModal, closeModalByClick } from './components/modal.js';
 import { clearValidation, enableValidation } from './components/validation.js';
-import { getProfile, patchProfileInfo, postNewCard, patchNewAvatar } from './components/api.js';
+import {
+  getProfile,
+  patchProfileInfo,
+  postNewCard,
+  patchNewAvatar,
+  deleteCardRequest,
+} from './components/api.js';
 import './pages/index.css';
 
 // @todo: DOM узлы
@@ -15,9 +21,9 @@ const popupEdit = document.querySelector('.popup_type_edit');
 // Кнопка для открытия этого окна
 const buttonEdit = document.querySelector('.profile__edit-button');
 // и его форма
-const formElement = popupEdit.querySelector('.popup__form');
-const nameInput = formElement.elements.name;
-const jobInput = formElement.elements.description;
+const formElementProfile = popupEdit.querySelector('.popup__form');
+const nameInput = formElementProfile.elements.name;
+const jobInput = formElementProfile.elements.description;
 
 // DOM узлы модального окна создания новой карточки
 const popupNewCard = document.querySelector('.popup_type_new-card');
@@ -31,39 +37,64 @@ const linkInput = formElementCard.elements.link;
 const popupOpenImage = document.querySelector('.popup_type_image');
 const popupImage = popupOpenImage.querySelector('.popup__image');
 const popupImageCaption = popupOpenImage.querySelector('.popup__caption');
-// DOM узлы модального окна изменения аватара 
+// DOM узлы модального окна изменения аватара
 const popupNewAvatar = document.querySelector('.popup_type_edit_avatar');
 const formNewAvatar = popupNewAvatar.querySelector('.popup__form');
 const inputLinkAvatar = formNewAvatar.elements.link;
+// DOM узел модального окна удаления карточки
+const popupDelete = document.querySelector('.popup_type_delete');
+const popupDeleteButton = popupDelete.querySelector(
+  '.popup_type_delete__button'
+);
+// Конфиг для валидации полей
+const configValidation = {
+  formSelector: '.popup__form',
+  inputSelector: '.popup__input',
+  submitButtonSelector: '.popup__button',
+  inactiveButtonClass: 'popup__button_disabled',
+  inputErrorClass: 'popup__input_type_error',
+  errorClass: 'popup__error_visible',
+};
 
 // Функция добавления карточки в разметку
-function renderCard(el) {
-  cardContainer.append(createCard(el, deleteCardItem, likeCard, openImage));
+function renderCard(el, id) {
+  cardContainer.append(createCard(el, deleteCard, likeCard, openImage, id));
 }
 // Функция изменения имени и описания профиля в разметке
-function handleFormSubmit(evt) {
+function handleFormSubmitProfile(evt) {
   evt.preventDefault();
-  formElement.elements.button.textContent = 'Сохранение...';
-  patchProfileInfo(nameInput, jobInput)
+  formElementProfile.elements.button.textContent = 'Сохранение...';
+  const obj = {
+    name: nameInput.value,
+    about: jobInput.value,
+  };
+  patchProfileInfo(obj)
     .then((result) => {
       changeProfileInfo(result);
-      formElement.elements.button.textContent = 'Сохранить';
       closeModal(popupEdit);
     })
-    .catch((err) => console.log(err));
+    .catch((err) => console.log(err))
+    .finally(() => {
+      formElementProfile.elements.button.textContent = 'Сохранить';
+    });
 }
-// Функция обработчик событий, которая возвращает обновленный аватар с сервера 
+// Функция обработчик событий, которая возвращает обновленный аватар с сервера
 function handleFormProfileImg(evt) {
   evt.preventDefault();
   formNewAvatar.elements.button.textContent = 'Сохранение...';
-  patchNewAvatar(inputLinkAvatar)
-    .then(result => {
-      changeProfileInfo(result);
-      formNewAvatar.elements.button.textContent = 'Сохранить';
-      closeModal(popupNewAvatar);
-    });
+  const obj = {
+    avatar: inputLinkAvatar.value,
+  };
+  patchNewAvatar(obj).then((result) => {
+    changeProfileInfo(result);
+    formNewAvatar.elements.button.textContent = 'Сохранить';
+    closeModal(popupNewAvatar);
+  })
+  .finally(() => {
+    formNewAvatar.elements.button.textContent = 'Сохранить';
+  });
 }
-// Функция обработчик событий, которая возвращает новую карточку с сервера, полученную 
+// Функция обработчик событий, которая возвращает новую карточку с сервера, полученную
 // из ответа на запрос с данными из формы
 function handleFormSubmitCard(evt) {
   evt.preventDefault();
@@ -74,12 +105,16 @@ function handleFormSubmitCard(evt) {
   };
   postNewCard(obj)
     .then((result) => {
-      cardContainer.prepend(createCard(result, deleteCardItem, likeCard, openImage));
+      cardContainer.prepend(
+        createCard(result, deleteCard, likeCard, openImage, result.owner._id)
+      );
       formElementCard.elements.button.textContent = 'Сохранить';
       closeModal(popupNewCard);
     })
-    .catch((err) => console.log(err));
-  evt.target.reset();
+    .catch((err) => console.log(err))
+    .finally(() => {
+      formElementCard.elements.button.textContent = 'Сохранить';
+    });
 }
 
 // Функция обработкчика событий для окрытия модального окна изображения карточки
@@ -87,9 +122,7 @@ function handleFormSubmitCard(evt) {
 function openImage(evt) {
   if (evt.target.classList.contains('card__image')) {
     popupImage.src = evt.target.src;
-    popupImageCaption.textContent = popupImage.alt = evt.target
-      .closest('.card')
-      .querySelector('.card__title').textContent;
+    popupImageCaption.textContent = evt.target.alt;
     openModal(popupOpenImage);
   }
 }
@@ -99,20 +132,36 @@ const changeProfileInfo = (data) => {
   profileDescription.textContent = data.about;
   profileImage.style.backgroundImage = `url(${data.avatar})`;
 };
+// Функция открывает попап и реализовывает логику установки попапу значения айди карточки,
+// а так же делает запрос и при успешном вызове вызывает метод удаления элемента карточки.
+const deleteCard = (idCard, card) => {
+  openModal(popupDelete);
+  popupDelete.dataset.id = idCard;
+  popupDeleteButton.addEventListener(
+    'click',
+    () => {
+      deleteCardRequest(idCard)
+        .then((result) => {
+          if (result) {
+            deleteCardItem(idCard, card);
+            closeModal(popupDelete);
+          }
+        })
+        .catch((err) => console.log(err));
+    },
+    true
+  );
+};
 
-
-// Вызов функции запроса на сервер, в ответе которого получаем данные 
-// карточек и профиля для рендеринга на странице 
+// Вызов функции запроса на сервер, в ответе которого получаем данные
+// карточек и профиля для рендеринга на странице
 getProfile()
-  .then((result) =>
-    result.forEach((item) => {
-      if (item.length) {
-        item.forEach((el) => renderCard(el));
-      } else {
-        changeProfileInfo(item);
-      }
-    })
-  )
+  .then((result) => {
+    const [objProfile, arrCards] = result;
+    const idUser = objProfile._id;
+    changeProfileInfo(objProfile);
+    arrCards.forEach((el) => renderCard(el, idUser));
+  })
   .catch((err) => console.log(err));
 // Добавление слушателя на кнопку откртия окна редактирования профиля
 buttonEdit.addEventListener('click', () => {
@@ -120,57 +169,28 @@ buttonEdit.addEventListener('click', () => {
   nameInput.value = profileTitle.textContent;
   jobInput.value = profileDescription.textContent;
   // Очистка ошибок валидации
-  clearValidation(formElement, {
-    inactiveButtonClass: 'popup__button_disabled',
-    inputErrorClass: 'popup__input_type_error',
-    errorClass: 'popup__error_visible',
-  });
+  clearValidation(formElementProfile, configValidation);
 });
 // Добавление слушателя на кнопку откртия окна редактирования аватара
 profileImage.addEventListener('click', () => {
   openModal(popupNewAvatar);
   // Очистка ошибок валидации
-  clearValidation(formNewAvatar, {
-    inactiveButtonClass: 'popup__button_disabled',
-    inputErrorClass: 'popup__input_type_error',
-    errorClass: 'popup__error_visible',
-  });
+  clearValidation(formNewAvatar, configValidation);
 });
 // Обработкчик события при отправке формы окна редактирования
-formElement.addEventListener('submit', handleFormSubmit);
+formElementProfile.addEventListener('submit', handleFormSubmitProfile);
 // Установка слушателя на отправку данных из формы редактирование аватара
 formNewAvatar.addEventListener('submit', handleFormProfileImg);
 // Добавление слушателей для закрытия модальных окон
 popups.forEach((popup) => {
-  popup.addEventListener('mousedown', (evt) => {
-    if (
-      evt.target.classList.contains('popup__close') ||
-      evt.target.classList.contains('popup_is-opened')
-    ) {
-      closeModal(popup);
-    }
-  });
+  popup.addEventListener('mousedown', closeModalByClick)
 });
 // Добавление слушателя на кнопку открытия окна добавления карточки
 buttonAdd.addEventListener('click', () => {
   openModal(popupNewCard);
-  // Очистка полей
-  placeNameInput.value = '';
-  linkInput.value = '';
-  clearValidation(formElementCard, {
-    inactiveButtonClass: 'popup__button_disabled',
-    inputErrorClass: 'popup__input_type_error',
-    errorClass: 'popup__error_visible',
-  });
+  clearValidation(formElementCard, configValidation);
 });
 // Обработкчик события при отправке формы окна добавления карточки
 formElementCard.addEventListener('submit', handleFormSubmitCard);
 // Вызов функции валидации
-enableValidation({
-  formSelector: '.popup__form',
-  inputSelector: '.popup__input',
-  submitButtonSelector: '.popup__button',
-  inactiveButtonClass: 'popup__button_disabled',
-  inputErrorClass: 'popup__input_type_error',
-  errorClass: 'popup__error_visible',
-});
+enableValidation(configValidation);

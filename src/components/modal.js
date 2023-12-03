@@ -1,5 +1,3 @@
-export { openModal, closeModal };
-
 // Функция открытия модального окна и добавления слушателя
 function openModal(el) {
   setTimeout(() => el.classList.add('popup_is-opened'), 0);
@@ -19,3 +17,14 @@ function closeByEscape(evt) {
     closeModal(openedPopup);
   }
 }
+
+const closeModalByClick = (evt) => {
+  if (
+    evt.target.classList.contains('popup__close') ||
+    evt.target.classList.contains('popup_is-opened')
+  ) {
+    closeModal(evt.currentTarget);
+  }
+};
+
+export { openModal, closeModal, closeModalByClick };

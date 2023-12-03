@@ -1,17 +1,24 @@
-export { clearValidation, enableValidation };
 
+const disableSubmitButton = (button, config) => {
+  button.classList.add(config.inactiveButtonClass);
+  button.setAttribute('disabled', 'disabled');
+}
+
+const hideInputError = (formElement, inputElement, config) => {
+  const errorElement = formElement.querySelector(`.${inputElement.id}-error`);
+  inputElement.classList.remove(config.inputErrorClass);
+  errorElement.classList.remove(config.errorClass);
+  errorElement.textContent = '';
+};
 // Функция очистки форм и деактивации кнопки 
 const clearValidation = (profileForm, validationConfig) => {
   const inputElements = Array.from(profileForm.querySelectorAll('input'));
-  const errorElements = Array.from(profileForm.querySelectorAll('span'));
   const buttonElement = profileForm.querySelector('button');
 
-  buttonElement.classList.add(validationConfig.inactiveButtonClass);
-  buttonElement.setAttribute('disabled', 'disabled');
-  inputElements.forEach((el) => el.classList.remove(validationConfig.inputErrorClass));
-  errorElements.forEach((el) => {
-    el.classList.remove(validationConfig.errorClass);
-    el.textContent = '';
+  disableSubmitButton(buttonElement, validationConfig);
+  inputElements.forEach((el) => {
+    hideInputError(profileForm, el, validationConfig);
+    el.value = '';
   });
 }; 
 
@@ -25,14 +32,7 @@ const enableValidation = (obj) => {
     errorElement.textContent = errorMessage;
     errorElement.classList.add(obj.errorClass);
   };
-  
-  const hideInputError = (formElement, inputElement) => {
-    const errorElement = formElement.querySelector(`.${inputElement.id}-error`);
-    inputElement.classList.remove(obj.inputErrorClass);
-    errorElement.classList.remove(obj.errorClass);
-    errorElement.textContent = '';
-  };
-  
+
   const checkInputValidity = (formElement, inputElement) => {
     if (inputElement.validity.patternMismatch) {
       inputElement.setCustomValidity(inputElement.dataset.errorMessage);
@@ -43,7 +43,7 @@ const enableValidation = (obj) => {
     if (!inputElement.validity.valid) {
       showInputError(formElement, inputElement, inputElement.validationMessage);
     } else {
-      hideInputError(formElement, inputElement);
+      hideInputError(formElement, inputElement, obj);
     }
   };
   
@@ -55,8 +55,7 @@ const enableValidation = (obj) => {
   
   const toggleButtonState = (inputList, buttonElement) => {
     if (hasInvalidInput(inputList)) {
-      buttonElement.classList.add(obj.inactiveButtonClass);
-      buttonElement.setAttribute('disabled', 'disabled');
+      disableSubmitButton(buttonElement, obj)
     } else {
       buttonElement.classList.remove(obj.inactiveButtonClass);
       buttonElement.removeAttribute('disabled');
@@ -84,3 +83,5 @@ const enableValidation = (obj) => {
     });
   });
 };
+
+export { clearValidation, enableValidation };
